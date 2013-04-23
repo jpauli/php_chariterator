@@ -70,6 +70,9 @@ ZEND_END_MODULE_GLOBALS(charit)
 
 #define CHARIT_DEFAULT_BUFFER_SIZE 8
 
+#define FETCH_OBJECT charit_object *obj; \
+		obj = (charit_object *)zend_object_store_get_object(getThis());
+
 static zend_class_entry *spl_ce_CharIterator;
 PHP_MINIT_FUNCTION(spl_char);
 

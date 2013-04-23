@@ -42,9 +42,8 @@ const zend_function_entry charit_functions[] = {
 
 SPL_METHOD(SplCharIterator, __construct)
 {
-	charit_object *obj;
 	zval *val;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
+	FETCH_OBJECT
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &val) == FAILURE) {
 		return;
@@ -55,41 +54,36 @@ SPL_METHOD(SplCharIterator, __construct)
 
 SPL_METHOD(SplCharIterator, valid)
 {
-	charit_object *obj;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
+	FETCH_OBJECT
 
 	RETVAL_BOOL(obj->offset < Z_STRLEN_P(obj->charval));
 }
 
 SPL_METHOD(SplCharIterator, next)
 {
-	charit_object *obj;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
+	FETCH_OBJECT
 
 	obj->offset++;
 }
 
 SPL_METHOD(SplCharIterator, key)
 {
-	charit_object *obj;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
+	FETCH_OBJECT
 
 	RETVAL_LONG((long)obj->offset);
 }
 
 SPL_METHOD(SplCharIterator, rewind)
 {
-	charit_object *obj;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
+	FETCH_OBJECT
 
 	obj->offset = 0;
 }
 
 SPL_METHOD(SplCharIterator, current)
 {
-	charit_object *obj;
+	FETCH_OBJECT
 	zval *zv;
-	obj = (charit_object *)zend_object_store_get_object(getThis());
 
 	ALLOC_INIT_ZVAL(zv);
 

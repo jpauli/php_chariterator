@@ -88,7 +88,7 @@ SPL_METHOD(SplCharIterator, current)
 	ALLOC_INIT_ZVAL(zv);
 
 	zv->type = IS_STRING;
-	Z_STRVAL_P(zv) = emalloc(2);
+	Z_STRVAL_P(zv) = (char *)emalloc(2);
 	Z_STRVAL_P(zv)[0] = Z_STRVAL_P(obj->charval)[obj->offset];
 	Z_STRVAL_P(zv)[1] = '\0';
 	Z_STRLEN_P(zv) = 1;
@@ -224,7 +224,7 @@ PHP_MINFO_FUNCTION(charit)
 static void spl_CharIterator_it_func_dtor(zend_object_iterator *iter)
 {
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
-	int i;
+	size_t i;
 	zval_ptr_dtor((zval **)(&charit->zit.data));
 	for(i=0; i<charit->buf_size; i++) {
 		if (charit->buf[i]) {

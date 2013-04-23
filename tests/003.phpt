@@ -1,10 +1,14 @@
 --TEST--
-Test internal iterator handlers
+Check user handler from inheritance
 --SKIPIF--
 <?php if (!extension_loaded("charit")) print "skip"; ?>
 --FILE--
 <?php 
-var_dump(iterator_to_array(new CharIterator('foobarbaz')));
+class MyCharIterator extends CharIterator
+{
+
+}
+var_dump(iterator_to_array(new MyCharIterator('foobarbaz')));
 ?>
 --EXPECT--
 array(9) {

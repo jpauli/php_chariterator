@@ -53,12 +53,76 @@ SPL_METHOD(SplCharIterator, __construct)
 	Z_ADDREF_P(val);
 }
 
+SPL_METHOD(SplCharIterator, valid)
+{
+	charit_object *obj;
+	obj = (charit_object *)zend_object_store_get_object(getThis());
+
+	RETVAL_BOOL(obj->offset < Z_STRLEN_P(obj->charval));
+}
+
+SPL_METHOD(SplCharIterator, next)
+{
+	charit_object *obj;
+	obj = (charit_object *)zend_object_store_get_object(getThis());
+
+	obj->offset++;
+}
+
+SPL_METHOD(SplCharIterator, key)
+{
+	charit_object *obj;
+	obj = (charit_object *)zend_object_store_get_object(getThis());
+
+	RETVAL_LONG((long)obj->offset);
+}
+
+SPL_METHOD(SplCharIterator, rewind)
+{
+	charit_object *obj;
+	obj = (charit_object *)zend_object_store_get_object(getThis());
+
+	obj->offset = 0;
+}
+
+SPL_METHOD(SplCharIterator, current)
+{
+	charit_object *obj;
+	zval *zv;
+	obj = (charit_object *)zend_object_store_get_object(getThis());
+
+	ALLOC_INIT_ZVAL(zv);
+
+	zv->type = IS_STRING;
+	Z_STRVAL_P(zv) = emalloc(2);
+	Z_STRVAL_P(zv)[0] = Z_STRVAL_P(obj->charval)[obj->offset];
+	Z_STRVAL_P(zv)[1] = '\0';
+	Z_STRLEN_P(zv) = 1;
+
+	RETVAL_ZVAL(zv, 1, 1);
+}
+
 ZEND_BEGIN_ARG_INFO(arginfo_splchariterator___construct, 0)
 	ZEND_ARG_INFO(0, string)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_key, 0)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_current, 0)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_next, 0)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_rewind, 0)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_valid, 0)
 ZEND_END_ARG_INFO()
 
 static const zend_function_entry spl_CharIterator_functions[] = {
 	SPL_ME(SplCharIterator, __construct,   arginfo_splchariterator___construct, ZEND_ACC_PUBLIC)
+	SPL_ME(SplCharIterator, key,   arginfo_splchariterator_key, ZEND_ACC_PUBLIC)
+	SPL_ME(SplCharIterator, current,   arginfo_splchariterator_current, ZEND_ACC_PUBLIC)
+	SPL_ME(SplCharIterator, next,   arginfo_splchariterator_next, ZEND_ACC_PUBLIC)
+	SPL_ME(SplCharIterator, rewind,   arginfo_splchariterator_rewind, ZEND_ACC_PUBLIC)
+	SPL_ME(SplCharIterator, valid,   arginfo_splchariterator_valid, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -114,7 +178,7 @@ PHP_MINIT_FUNCTION(charit)
 	REGISTER_SPL_STD_CLASS_EX(CharIterator, spl_CharIterator_create_object, spl_CharIterator_functions)
 	memcpy(&spl_CharIterator_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
 	spl_ce_CharIterator->get_iterator = spl_CharIterator_get_iterator;
-	zend_class_implements(spl_ce_CharIterator, 1, zend_ce_traversable);
+	zend_class_implements(spl_ce_CharIterator, 1, zend_ce_iterator);
 
 	return SUCCESS;
 }
@@ -254,6 +318,7 @@ static zend_object_value spl_CharIterator_create_object(zend_class_entry *class_
 	charit_object *myobject;
 
 	myobject = (charit_object *)ecalloc(1 , sizeof(charit_object));
+	myobject->offset = 0;
 
 	zend_object_std_init(&myobject->zobj, class_type);
 	object_properties_init(&myobject->zobj, class_type);

@@ -78,6 +78,7 @@ static zend_object_handlers spl_CharIterator_object_handlers;
 typedef struct _charit_object {
 	zend_object zobj;
 	zval *charval;
+	int offset;
 } charit_object;
 
 typedef struct _charit_object_iterator {

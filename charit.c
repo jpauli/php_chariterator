@@ -226,13 +226,10 @@ static void spl_CharIterator_it_func_dtor(zend_object_iterator *iter)
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
 	size_t i;
 	zval_ptr_dtor((zval **)(&charit->zit.data));
-	for(i=0; i<charit->buf_size; i++) {
-		if (charit->buf[i]) {
-			zval_ptr_dtor(charit->buf[i]);
-			efree(charit->buf[i]);
-		}
+	if (charit->previous_val) {
+		zval_ptr_dtor(charit->previous_val);
+		efree(charit->previous_val);
 	}
-	efree(charit->buf);
 	efree(charit);
 }
 
@@ -262,14 +259,11 @@ static void spl_CharIterator_it_func_get_current_data(zend_object_iterator *iter
 	(*zv)->value.str.val[0] = Z_STRVAL_P((zval *)iter->data)[iter->index];
 	(*zv)->value.str.val[1] = '\0';
 	*data = zv; /* Iterator will increment refcount, let it do it */
-
-	if (iter->index == charit->buf_size) {
-		charit->buf_size *= 2; /* double size, why not? */
-		charit->buf = (zval ***)erealloc(charit->buf, charit->buf_size * sizeof(zval **));
-		void *buf = (void *)charit->buf;
-		memset(charit->buf+iter->index, 0, (charit->buf_size-iter->index) * sizeof(zval **));
+	if (charit->previous_val) {
+		zval_ptr_dtor(charit->previous_val);
+		efree(charit->previous_val);
 	}
-	charit->buf[iter->index] = zv;
+	charit->previous_val = zv;
 }
 
 static int spl_CharIterator_it_func_valid(zend_object_iterator *iter)
@@ -293,8 +287,7 @@ static zend_object_iterator* spl_CharIterator_get_iterator(zend_class_entry *ce,
 	it->zit.data = (void *)((charit_object *)zend_object_store_get_object(object))->charval;
 	Z_ADDREF_P((zval *)it->zit.data);
 	it->zit.funcs = &spl_CharIterator_it_funcs;
-	it->buf = (zval ***)ecalloc(CHARIT_DEFAULT_BUFFER_SIZE, sizeof(zval **));
-	it->buf_size = CHARIT_DEFAULT_BUFFER_SIZE;
+	it->previous_val = NULL;
 	return (zend_object_iterator *) it;
 }
 

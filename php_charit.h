@@ -86,7 +86,7 @@ typedef struct _charit_object {
 
 typedef struct _charit_object_iterator {
 	zend_object_iterator zit;
-	zval ***buf;
+	zval **previous_val;
 	size_t buf_size;
 } charit_object_iterator;
 

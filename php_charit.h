@@ -76,18 +76,21 @@ ZEND_END_MODULE_GLOBALS(charit)
 static zend_class_entry *spl_ce_CharIterator;
 PHP_MINIT_FUNCTION(spl_char);
 
+extern zend_class_entry *spl_ce_OutOfRangeException;
+
 static zend_object_handlers spl_CharIterator_object_handlers;
 
 typedef struct _charit_object {
 	zend_object zobj;
 	zval *charval;
+	long chunk_size;
 	int offset;
+	int max_offset;
 } charit_object;
 
 typedef struct _charit_object_iterator {
 	zend_object_iterator zit;
 	zval **previous_val;
-	size_t buf_size;
 } charit_object_iterator;
 
 static void spl_CharIterator_it_func_dtor(zend_object_iterator *iter);

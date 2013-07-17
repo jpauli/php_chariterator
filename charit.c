@@ -43,12 +43,23 @@ const zend_function_entry charit_functions[] = {
 SPL_METHOD(SplCharIterator, __construct)
 {
 	zval *val;
+	long chunk;
 	FETCH_OBJECT
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &val) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|l", &val, &chunk) == FAILURE) {
 		return;
 	}
-	obj->charval = val;
+	if (ZEND_NUM_ARGS() == 1) {
+		chunk = 1;
+	}
+	if (chunk > Z_STRLEN_P(val)) {
+		zend_throw_exception(spl_ce_OutOfRangeException, "Chunk is larger than string length");
+		return;
+	}
+	obj->charval    = val;
+	obj->chunk_size = chunk;
+	obj->max_offset = Z_STRLEN_P(val) / obj->chunk_size + (Z_STRLEN_P(val) % obj->chunk_size ? 1 : 0) - 1;
+
 	Z_ADDREF_P(val);
 }
 
@@ -76,7 +87,6 @@ SPL_METHOD(SplCharIterator, key)
 SPL_METHOD(SplCharIterator, rewind)
 {
 	FETCH_OBJECT
-
 	obj->offset = 0;
 }
 
@@ -98,6 +108,7 @@ SPL_METHOD(SplCharIterator, current)
 
 ZEND_BEGIN_ARG_INFO(arginfo_splchariterator___construct, 0)
 	ZEND_ARG_INFO(0, string)
+	ZEND_ARG_INFO(0, chunk_length)
 ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_splchariterator_key, 0)
 ZEND_END_ARG_INFO()
@@ -225,7 +236,7 @@ static void spl_CharIterator_it_func_dtor(zend_object_iterator *iter)
 {
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
 	size_t i;
-	zval_ptr_dtor((zval **)(&charit->zit.data));
+	zval_ptr_dtor((zval **)(&((charit_object *)charit->zit.data)->charval));
 	if (charit->previous_val) {
 		zval_ptr_dtor(charit->previous_val);
 		efree(charit->previous_val);
@@ -253,11 +264,16 @@ static void spl_CharIterator_it_func_get_current_data(zend_object_iterator *iter
 	zval **zv = (zval **)emalloc(sizeof(zval *));
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
 	ALLOC_INIT_ZVAL(*zv);
-	(*zv)->type = IS_STRING;
-	(*zv)->value.str.len = 1;
-	(*zv)->value.str.val = (char *)emalloc(2);
-	(*zv)->value.str.val[0] = Z_STRVAL_P((zval *)iter->data)[iter->index];
-	(*zv)->value.str.val[1] = '\0';
+	size_t size_to_copy;
+	int charval_len = Z_STRLEN_P((zval *)((charit_object *)iter->data)->charval);
+
+	if (iter->index == ((charit_object *)iter->data)->max_offset) {
+		size_to_copy = Z_STRLEN_P(((charit_object *)iter->data)->charval) - ((charit_object *)iter->data)->max_offset * ((charit_object *)iter->data)->chunk_size;
+	} else {
+		size_to_copy = ((charit_object *)iter->data)->chunk_size;
+	}
+
+	ZVAL_STRINGL(*zv, (Z_STRVAL_P((zval *)((charit_object *)iter->data)->charval)+ iter->index * ((charit_object *)iter->data)->chunk_size), size_to_copy , 1);
 	*data = zv; /* Iterator will increment refcount, let it do it */
 	if (charit->previous_val) {
 		zval_ptr_dtor(charit->previous_val);
@@ -268,7 +284,7 @@ static void spl_CharIterator_it_func_get_current_data(zend_object_iterator *iter
 
 static int spl_CharIterator_it_func_valid(zend_object_iterator *iter)
 {
-	return iter->index < Z_STRLEN_P((zval *)iter->data) ? SUCCESS : FAILURE;
+	return iter->index <= ((charit_object *)iter->data)->max_offset ? SUCCESS : FAILURE;
 }
 
 static zend_object_iterator_funcs spl_CharIterator_it_funcs = {
@@ -284,8 +300,8 @@ static zend_object_iterator* spl_CharIterator_get_iterator(zend_class_entry *ce,
 {
 	charit_object_iterator * it;
 	it = (charit_object_iterator *)emalloc(sizeof(charit_object_iterator));
-	it->zit.data = (void *)((charit_object *)zend_object_store_get_object(object))->charval;
-	Z_ADDREF_P((zval *)it->zit.data);
+	it->zit.data = zend_object_store_get_object(object);
+	Z_ADDREF_P((zval *)((charit_object *)it->zit.data)->charval);
 	it->zit.funcs = &spl_CharIterator_it_funcs;
 	it->previous_val = NULL;
 	return (zend_object_iterator *) it;
@@ -294,7 +310,9 @@ static zend_object_iterator* spl_CharIterator_get_iterator(zend_class_entry *ce,
 static void spl_CharIterator_object_dtor(void *object)
 {
 	charit_object *myobject = (charit_object *)object;
-	zval_ptr_dtor(&myobject->charval);
+	if (myobject->charval) {
+		zval_ptr_dtor(&myobject->charval);
+	}
 	zend_object_std_dtor(&myobject->zobj);
 	efree(object);
 }
@@ -305,6 +323,7 @@ static zend_object_value spl_CharIterator_create_object(zend_class_entry *class_
 	charit_object *myobject;
 
 	myobject = (charit_object *)ecalloc(1 , sizeof(charit_object));
+	memset(myobject, 0, sizeof(charit_object));
 	myobject->offset = 0;
 
 	zend_object_std_init(&myobject->zobj, class_type);

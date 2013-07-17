@@ -56,6 +56,10 @@ SPL_METHOD(SplCharIterator, __construct)
 		zend_throw_exception(spl_ce_OutOfRangeException, "Chunk is larger than string length");
 		return;
 	}
+	if (chunk < 0) {
+		zend_throw_exception(spl_ce_OutOfRangeException, "Chunk size must be positive");
+		return;
+	}
 	obj->charval    = val;
 	obj->chunk_size = chunk;
 	obj->max_offset = Z_STRLEN_P(val) / obj->chunk_size + (Z_STRLEN_P(val) % obj->chunk_size ? 1 : 0) - 1;

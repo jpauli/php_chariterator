@@ -68,8 +68,6 @@ ZEND_END_MODULE_GLOBALS(charit)
 #define CHARIT_G(v) (charit_globals.v)
 #endif
 
-#define CHARIT_DEFAULT_BUFFER_SIZE 8
-
 #define FETCH_OBJECT charit_object *obj; \
 		obj = (charit_object *)zend_object_store_get_object(getThis());
 

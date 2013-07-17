@@ -29,3 +29,23 @@ array(9) {
 }
 */
 ```
+
+Chunk size is supported :
+
+```php
+<?php
+
+var_dump(iterator_to_array(new CharIterator('foobarbaz', 3)));
+
+/*
+array(3) {
+  [0]=>
+  string(3) "foo"
+  [1]=>
+  string(3) "bar"
+  [2]=>
+  string(3) "baz"
+}
+*/
+
+```

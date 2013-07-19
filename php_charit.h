@@ -71,6 +71,9 @@ ZEND_END_MODULE_GLOBALS(charit)
 #define FETCH_OBJECT charit_object *obj; \
 		obj = (charit_object *)zend_object_store_get_object(getThis());
 
+#define FETCH_CHARIT_OBJECT(obj) ((charit_object *)(obj)->data)
+#define FETCH_CHARIT_OBJECT_PROP(obj, prop) (FETCH_CHARIT_OBJECT((obj))->prop)
+
 static zend_class_entry *spl_ce_CharIterator;
 PHP_MINIT_FUNCTION(spl_char);
 
@@ -81,9 +84,9 @@ static zend_object_handlers spl_CharIterator_object_handlers;
 typedef struct _charit_object {
 	zend_object zobj;
 	zval *charval;
-	long chunk_size;
-	int offset;
-	int max_offset;
+	ulong chunk_size;
+	uint offset;
+	uint max_offset;
 } charit_object;
 
 typedef struct _charit_object_iterator {

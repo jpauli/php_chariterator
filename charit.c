@@ -71,7 +71,7 @@ SPL_METHOD(SplCharIterator, valid)
 {
 	FETCH_OBJECT
 
-	RETVAL_BOOL(obj->offset < Z_STRLEN_P(obj->charval));
+	RETVAL_BOOL(obj->offset <= obj->max_offset);
 }
 
 SPL_METHOD(SplCharIterator, next)
@@ -85,29 +85,28 @@ SPL_METHOD(SplCharIterator, key)
 {
 	FETCH_OBJECT
 
-	RETVAL_LONG((long)obj->offset);
+	RETVAL_LONG(obj->offset);
 }
 
 SPL_METHOD(SplCharIterator, rewind)
 {
 	FETCH_OBJECT
+
 	obj->offset = 0;
 }
 
 SPL_METHOD(SplCharIterator, current)
 {
 	FETCH_OBJECT
-	zval *zv;
 
-	ALLOC_INIT_ZVAL(zv);
+	size_t size_to_copy;
+	size_to_copy = obj->chunk_size; /* default */
 
-	zv->type = IS_STRING;
-	Z_STRVAL_P(zv) = (char *)emalloc(2);
-	Z_STRVAL_P(zv)[0] = Z_STRVAL_P(obj->charval)[obj->offset];
-	Z_STRVAL_P(zv)[1] = '\0';
-	Z_STRLEN_P(zv) = 1;
+	if (obj->offset == obj->max_offset) {
+		size_to_copy = Z_STRLEN_P(obj->charval) - obj->max_offset * obj->chunk_size;
+	}
 
-	RETVAL_ZVAL(zv, 1, 1);
+	RETURN_STRINGL(Z_STRVAL_P(obj->charval) + obj->offset * obj->chunk_size, size_to_copy, 1)
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_splchariterator___construct, 0)
@@ -239,7 +238,6 @@ PHP_MINFO_FUNCTION(charit)
 static void spl_CharIterator_it_func_dtor(zend_object_iterator *iter)
 {
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
-	size_t i;
 	zval_ptr_dtor((zval **)(&((charit_object *)charit->zit.data)->charval));
 	if (charit->previous_val) {
 		zval_ptr_dtor(charit->previous_val);
@@ -269,15 +267,14 @@ static void spl_CharIterator_it_func_get_current_data(zend_object_iterator *iter
 	charit_object_iterator *charit = (charit_object_iterator *) iter;
 	ALLOC_INIT_ZVAL(*zv);
 	size_t size_to_copy;
-	int charval_len = Z_STRLEN_P((zval *)((charit_object *)iter->data)->charval);
 
-	if (iter->index == ((charit_object *)iter->data)->max_offset) {
-		size_to_copy = Z_STRLEN_P(((charit_object *)iter->data)->charval) - ((charit_object *)iter->data)->max_offset * ((charit_object *)iter->data)->chunk_size;
+	if (iter->index == FETCH_CHARIT_OBJECT_PROP(iter, max_offset)) {
+		size_to_copy = Z_STRLEN_P(FETCH_CHARIT_OBJECT_PROP(iter, charval)) - FETCH_CHARIT_OBJECT_PROP(iter, max_offset) * FETCH_CHARIT_OBJECT_PROP(iter, chunk_size);
 	} else {
-		size_to_copy = ((charit_object *)iter->data)->chunk_size;
+		size_to_copy = FETCH_CHARIT_OBJECT_PROP(iter, chunk_size);
 	}
 
-	ZVAL_STRINGL(*zv, (Z_STRVAL_P((zval *)((charit_object *)iter->data)->charval)+ iter->index * ((charit_object *)iter->data)->chunk_size), size_to_copy , 1);
+	ZVAL_STRINGL(*zv, (Z_STRVAL_P((zval *)(FETCH_CHARIT_OBJECT_PROP(iter, charval))) + iter->index * FETCH_CHARIT_OBJECT_PROP(iter, chunk_size)), size_to_copy , 1);
 	*data = zv; /* Iterator will increment refcount, let it do it */
 	if (charit->previous_val) {
 		zval_ptr_dtor(charit->previous_val);
@@ -288,7 +285,7 @@ static void spl_CharIterator_it_func_get_current_data(zend_object_iterator *iter
 
 static int spl_CharIterator_it_func_valid(zend_object_iterator *iter)
 {
-	return iter->index <= ((charit_object *)iter->data)->max_offset ? SUCCESS : FAILURE;
+	return iter->index <= FETCH_CHARIT_OBJECT_PROP(iter, max_offset) ? SUCCESS : FAILURE;
 }
 
 static zend_object_iterator_funcs spl_CharIterator_it_funcs = {

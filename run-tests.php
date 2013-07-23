@@ -24,7 +24,7 @@
    +----------------------------------------------------------------------+
  */
 
-/* $Id: 84907a705f8b262470852bf67518c6221580a930 $ */
+/* $Id: 830dcd759bee154983005e60ac09447b94127d95 $ */
 
 /* Sanity check to ensure that pcre extension needed by this script is available.
  * In the event it is not, print a nice error message indicating that this script will
@@ -240,7 +240,6 @@ $ini_overwrites = array(
 		'ignore_repeated_errors=0',
 		'precision=14',
 		'memory_limit=128M',
-		'opcache.fast_shutdown=0',
 	);
 
 function write_information($show_html)
@@ -312,7 +311,6 @@ VALGRIND    : " . ($leak_check ? $valgrind_header : 'Not used') . "
 define('PHP_QA_EMAIL', 'qa-reports@lists.php.net');
 define('QA_SUBMISSION_PAGE', 'http://qa.php.net/buildtest-process.php');
 define('QA_REPORTS_PAGE', 'http://qa.php.net/reports');
-define('TRAVIS_CI' , (bool) getenv('TRAVIS_PHP_VERSION'));
 
 function save_or_mail_results()
 {
@@ -320,7 +318,7 @@ function save_or_mail_results()
 		   $PHP_FAILED_TESTS, $CUR_DIR, $php, $output_file, $compression;
 
 	/* We got failed Tests, offer the user to send an e-mail to QA team, unless NO_INTERACTION is set */
-	if (!getenv('NO_INTERACTION') && !TRAVIS_CI) {
+	if (!getenv('NO_INTERACTION')) {
 		$fp = fopen("php://stdin", "r+");
 		if ($sum_results['FAILED'] || $sum_results['BORKED'] || $sum_results['WARNED'] || $sum_results['LEAKED'] || $sum_results['XFAILED']) {
 			echo "\nYou may have found a problem in PHP.";
@@ -337,8 +335,8 @@ function save_or_mail_results()
 		$just_save_results = (strtolower($user_input[0]) == 's');
 	}
 
-	if ($just_save_results || !getenv('NO_INTERACTION') || TRAVIS_CI) {
-		if ($just_save_results || TRAVIS_CI || strlen(trim($user_input)) == 0 || strtolower($user_input[0]) == 'y') {
+	if ($just_save_results || !getenv('NO_INTERACTION')) {
+		if ($just_save_results || strlen(trim($user_input)) == 0 || strtolower($user_input[0]) == 'y') {
 			/*
 			 * Collect information about the host system for our report
 			 * Fetch phpinfo() output so that we can see the PHP enviroment
@@ -350,9 +348,7 @@ function save_or_mail_results()
 			}
 
 			/* Ask the user to provide an email address, so that QA team can contact the user */
-			if (TRAVIS_CI) {
-				$user_email = 'travis at php dot net';
-			} elseif (!strncasecmp($user_input, 'y', 1) || strlen(trim($user_input)) == 0) {
+			if (!strncasecmp($user_input, 'y', 1) || strlen(trim($user_input)) == 0) {
 				echo "\nPlease enter your email address.\n(Your address will be mangled so that it will not go out on any\nmailinglist in plain text): ";
 				flush();
 				$user_email = trim(fgets($fp, 1024));
@@ -428,7 +424,7 @@ function save_or_mail_results()
 			$failed_tests_data .= $sep . "PHPINFO" . $sep;
 			$failed_tests_data .= shell_exec($php . ' -ddisplay_errors=stderr -dhtml_errors=0 -i 2> /dev/null');
 
-			if ($just_save_results || !mail_qa_team($failed_tests_data, $compression, $status) && !TRAVIS_CI) {
+			if ($just_save_results || !mail_qa_team($failed_tests_data, $compression, $status)) {
 				file_put_contents($output_file, $failed_tests_data);
 
 				if (!$just_save_results) {
@@ -436,7 +432,7 @@ function save_or_mail_results()
 				}
 
 				echo "Please send " . $output_file . " to " . PHP_QA_EMAIL . " manually, thank you.\n";
-			} elseif (!getenv('NO_INTERACTION') && !TRAVIS_CI) {
+			} else {
 				fwrite($fp, "\nThank you for helping to make PHP better.\n");
 				fclose($fp);
 			}
@@ -652,7 +648,7 @@ if (isset($argc) && $argc > 1) {
 					$html_output = is_resource($html_file);
 					break;
 				case '--version':
-					echo '$Id: 84907a705f8b262470852bf67518c6221580a930 $' . "\n";
+					echo '$Id: 830dcd759bee154983005e60ac09447b94127d95 $' . "\n";
 					exit(1);
 
 				default:
@@ -683,7 +679,7 @@ Options:
     -d foo=bar  Pass -d option to the php binary (Define INI entry foo
                 with value 'bar').
 
-    -g          Comma seperated list of groups to show during test run
+    -g          Comma separated list of groups to show during test run
                 (possible values: PASS, FAIL, XFAIL, SKIP, BORK, WARN, LEAK, REDIRECT).
 
     -m          Test for memory leaks with Valgrind.
@@ -803,12 +799,14 @@ HELP;
 			fclose($failed_tests_file);
 		}
 
-		compute_summary();
-		if ($html_output) {
-			fwrite($html_file, "<hr/>\n" . get_summary(false, true));
+		if (count($test_files) || count($test_results)) {
+			compute_summary();
+			if ($html_output) {
+				fwrite($html_file, "<hr/>\n" . get_summary(false, true));
+			}
+			echo "=====================================================================";
+			echo get_summary(false, false);
 		}
-		echo "=====================================================================";
-		echo get_summary(false, false);
 
 		if ($html_output) {
 			fclose($html_file);
@@ -820,7 +818,7 @@ HELP;
 
 		junit_save_xml();
 
-		if (getenv('REPORT_EXIT_STATUS') == 1 and $sum_results['FAILED']) {
+		if (getenv('REPORT_EXIT_STATUS') == 1 and preg_match('/FAILED(?: |$)/', implode(' ', $test_results))) {
 			exit(1);
 		}
 

@@ -1,5 +1,6 @@
 New Iterator iterating characters in a PHP string.
 Multibyte characters are not supported
+PHP >= 5.4
 
 ```php
 <?php

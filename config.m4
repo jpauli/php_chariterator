@@ -59,6 +59,6 @@ if test "$PHP_CHARIT" != "no"; then
   dnl
   dnl PHP_SUBST(CHARIT_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(charit, charit.c, $ext_shared)
+  PHP_NEW_EXTENSION(charit, charit.c charit_internal.c, $ext_shared)
   PHP_ADD_EXTENSION_DEP(charit, spl)
 fi
